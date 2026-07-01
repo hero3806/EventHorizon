@@ -1,4 +1,25 @@
-.venv
-tests
-src/event_horizon.egg-info
-src/EventHorizon/__pycache__
+# Virtual environments
+.venv/
+venv/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment files
+.env
+
+# PyPI credentials
+.pypirc
+
+# macOS
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
