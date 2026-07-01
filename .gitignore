@@ -1,0 +1,4 @@
+.venv
+tests
+src/event_horizon.egg-info
+src/EventHorizon/__pycache__
