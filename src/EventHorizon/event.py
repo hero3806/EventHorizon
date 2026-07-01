@@ -12,9 +12,18 @@ class Event:
         return instance
 
     def __init__(self, name):
+        if hasattr(self, "_initialized"):
+            return
+
         self.name = name
-        if not hasattr(self, "callback"):
-            self.callback = None
+        self.callback = None
+        self._initialized = True
+        
+    @classmethod
+    def delete_by_name(cls, name: str):
+        """Deletes the function by the given name."""
+        """@name Name of the function."""
+        cls._events.pop(name, None)
     
     # Fires the event that has been binded from another file or the current file.
     # Supports multiple arguments.
@@ -31,3 +40,8 @@ class Event:
         """Register the callback for the event"""
         self.callback = cb
         return cb
+    
+    def delete(self):
+        """Delete the current event entirely"""
+        """NOTE: Deleting this will make this instance completely unusable and will require creating a new instance."""
+        Event._events.pop(self.name, None)

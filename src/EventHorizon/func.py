@@ -13,9 +13,18 @@ class Function:
         return instance
 
     def __init__(self, name):
+        if hasattr(self, "_initialized"):
+            return
+
         self.name = name
-        if not hasattr(self, "callback"):
-            self.callback = None
+        self.callback = None
+        self._initialized = True
+        
+    @classmethod
+    def delete_by_name(cls, name: str):
+        """Deletes the function by the given name."""
+        """@name Name of the function."""
+        cls._funcs.pop(name, None)
             
     def run(self, *args, **kwargs): 
         """Fires the function that has been binded and returns the value from it."""
@@ -29,3 +38,8 @@ class Function:
         """Register the callback for the function"""
         self.callback = cb
         return cb
+    
+    def delete(self):
+        """Delete the current function entirely"""
+        """NOTE: Deleting this will make this instance completely unusable and will require creating a new instance."""
+        Function._funcs.pop(self.name, None)
