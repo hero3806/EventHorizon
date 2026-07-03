@@ -17,7 +17,7 @@ class Function:
             return
 
         self.name = name
-        self.callback = None
+        self.callbacks: Callable[..., Any] = None
         self._initialized = True
         
     @classmethod
