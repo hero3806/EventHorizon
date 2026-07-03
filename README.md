@@ -1,5 +1,12 @@
 # Event Horizon
 
+![PyPI Version](https://img.shields.io/pypi/v/ehorizon)
+![Python Version](https://img.shields.io/pypi/pyversions/ehorizon)
+![GitHub stars](https://img.shields.io/github/stars/hero3806/EventHorizon)
+![GitHub license](https://img.shields.io/github/license/hero3806/EventHorizon)
+
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/ehorizon?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/ehorizon)
+
 A python library that adds events to communicate through other files.
 
 ## Installation
