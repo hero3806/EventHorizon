@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 import threading
+import warnings
+
 from typing import Any, Callable
 
 class EventType(Enum):
@@ -14,6 +16,9 @@ class Callback:
     type: EventType = EventType.EVENT
 
 class EventError(Exception):
+    pass
+
+class EventWarning(Warning):
     pass
 
 class Event:
@@ -34,74 +39,128 @@ class Event:
         self.name = name
         self.callbacks: list[Callback] = []
         self._initialized = True
+        self._deleted = False
         
-        self._waiter = threading.Event()
-        self._wait_args = ()
-        self._wait_kwargs = {}
+        self._waiters: list[tuple[threading.Event, dict[str, Any]]] = []
     
+    def _ensure_valid(self):
+        if self._deleted:
+            raise EventError(
+                f"Event {self.name!r} has been deleted and can no longer be used."
+            )
+        
     @classmethod
     def delete_by_name(cls, name: str):
-        """Deletes the function by the given name."""
-        """@name Name of the function."""
+        """
+        Deletes the function by the given name.
+        
+        @name Name of the function.
+        """
         cls._events.pop(name, None)
     
     # Fires the event that has been binded from another file or the current file.
     # Supports multiple arguments.
     def Fire(self, *args, **kwargs): 
-        """Fires the event that has been binded from another file or the current file."""
-        """Supports multiple arguments."""
-        if not self.callbacks:
-            raise EventError("There are no callbacks for this event, did you forget to add an 'OnEvent' callback?")
+        """
+        Fires the event that has been binded from another file or the current file.
         
-        self._wait_args = args
-        self._wait_kwargs = kwargs
-        self._waiter.set()
+        Supports multiple arguments.
+        """
+        self._ensure_valid()
+        
+        for waiter, state in self._waiters.copy():
+            state["args"] = args
+            state["kwargs"] = kwargs
+            waiter.set()
+            
+        if not self.callbacks:
+            warnings.warn(
+                "There are no callbacks for this event, did you forget to add an 'OnEvent' callback?",
+                EventWarning,
+                stacklevel=2
+            )
+            return
     
         for callback in self.callbacks.copy():
             
             if callback.type == EventType.EVENT:
-                callback.callback(*args, **kwargs)
+                try:
+                    callback.callback(*args, **kwargs)
+                except Exception as e:
+                    warnings.warn(
+                        f"Callback {callback.callback.__name__!r} raised {type(e).__name__}: {e}",
+                        EventWarning,
+                        stacklevel=2,
+                    )
+                
             elif callback.type == EventType.ONCE:
-                callback.callback(*args, **kwargs)
+                try:
+                    callback.callback(*args, **kwargs)
+                except Exception as e:
+                    warnings.warn(
+                        f"Callback {callback.callback.__name__!r} raised {type(e).__name__}: {e}",
+                        EventWarning,
+                        stacklevel=2,
+                    )
+                
                 self.callbacks.remove(callback)
                 
                 
     
     # Register the callback for the event
-    def OnEvent(self, cb: Callable[..., None]):
+    def OnEvent(self, cb: Callable[..., Any]):
         """Register a callback for the event"""
         
+        self._ensure_valid()
         self.callbacks.append(Callback(cb))
         return cb
     
-    def Once(self, cb: Callable[..., None]):
+    def Once(self, cb: Callable[..., Any]):
         """Register a callback that runs only once."""
         
+        self._ensure_valid()
         self.callbacks.append(Callback(cb, EventType.ONCE))
         return cb
     
     def Wait(self):
         """Block until the event fires."""
-
-        self._waiter.wait()
-
-        args = self._wait_args
-        kwargs = self._wait_kwargs
-
-        self._waiter.clear()
-
-        if kwargs:
-            return args, kwargs
-
-        if len(args) == 1:
-            return args[0]
-
-        return args
         
+        self._ensure_valid()
+        waiter = threading.Event()
+        state: dict[str, Any] = {}
+
+        self._waiters.append((waiter, state))
+
+        try:
+            waiter.wait()
+
+            args = state["args"]
+            kwargs = state["kwargs"]
+
+            if kwargs:
+                return args, kwargs
+
+            if len(args) == 1:
+                return args[0]
+
+            return args
+        finally:
+            if (waiter, state) in self._waiters:
+                self._waiters.remove((waiter, state))
+    
     def delete(self):
-        """Delete the current event entirely"""
-        """NOTE: Deleting this will make this instance completely unusable and will require creating a new instance."""
+        """
+        Delete the current event entirely
+        
+        NOTE: Deleting this will make this instance completely unusable and will require creating a new instance.
+        """
+        if self._deleted:
+            return
+
         Event._events.pop(self.name, None)
+        self.callbacks.clear()
+        self._waiters.clear()
+        self._deleted = True
         
 # Aliases
 Event.fire = Event.Fire
